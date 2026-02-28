@@ -48,7 +48,7 @@ fn classify_folder(name: &str) -> &'static str {
 #[tauri::command]
 fn get_home_dir() -> Result<String, String> {
     dirs::home_dir()
-        .map(|p| p.to_string_lossy().to_string())
+        .map(|home_path| home_path.to_string_lossy().to_string())
         .ok_or_else(|| "Could not resolve home directory".into())
 }
 
@@ -63,37 +63,37 @@ async fn smart_scan(window: tauri::Window) -> Result<ScanResult, String> {
 fn dir_size(path: &Path) -> u64 {
     WalkDir::new(path)
         .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-        .map(|e| e.metadata().map(|m| m.len()).unwrap_or(0))
+        .filter_map(|entry_result| entry_result.ok())
+        .filter(|entry| entry.file_type().is_file())
+        .map(|entry| entry.metadata().map(|metadata| metadata.len()).unwrap_or(0))
         .sum()
 }
 
 fn run_smart_scan(home: PathBuf, window: tauri::Window) -> Result<ScanResult, String> {
     let child_dirs: Vec<_> = std::fs::read_dir(&home)
-        .map_err(|e| e.to_string())?
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.is_dir())
+        .map_err(|read_error| read_error.to_string())?
+        .filter_map(|entry_result| entry_result.ok())
+        .map(|dir_entry| dir_entry.path())
+        .filter(|entry_path| entry_path.is_dir())
         .collect();
 
     let total_folders = child_dirs.len() as u64;
     let mut folders = Vec::new();
     let mut total_size_bytes = 0_u64;
 
-    for (i, child_path) in child_dirs.into_iter().enumerate() {
+    for (folder_index, child_path) in child_dirs.into_iter().enumerate() {
         let name = child_path
             .file_name()
-            .and_then(|n| n.to_str())
+            .and_then(|os_name| os_name.to_str())
             .unwrap_or("(unknown)")
             .to_string();
 
         let _ = window.emit(
             "scan-progress",
             ScanProgress {
-                scanned_folders: i as u64,
+                scanned_folders: folder_index as u64,
                 total_folders,
-                percent: (i as f64 / total_folders as f64) * 100.0,
+                percent: (folder_index as f64 / total_folders as f64) * 100.0,
                 current_folder: name.clone(),
             },
         );
@@ -121,7 +121,7 @@ fn run_smart_scan(home: PathBuf, window: tauri::Window) -> Result<ScanResult, St
         },
     );
 
-    folders.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+    folders.sort_by(|folder_a, folder_b| folder_b.size_bytes.cmp(&folder_a.size_bytes));
     Ok(ScanResult {
         total_size_bytes,
         folders,

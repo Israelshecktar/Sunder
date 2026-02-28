@@ -61,6 +61,10 @@ h1 {
   margin: 0;
 }
 
+.brand-word {
+  color: var(--teal);
+}
+
 /* Circular pulsing scan button */
 .scan-circle {
   position: relative;

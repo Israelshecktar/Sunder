@@ -149,7 +149,10 @@ function App() {
 
       {!isScanning && !scanResult && (
         <div className="hero">
-          <p>Detect what's eating your disk — instantly.</p>
+          <p>
+            Detect what's eating your disk - <strong>Instantly.</strong> Break them{" "}
+            <del>Down</del> <strong className="brand-word">Sunder.</strong>
+          </p>
           <button className="scan-circle" onClick={startScan}>
             <span className="scan-circle-label">Scan</span>
           </button>
